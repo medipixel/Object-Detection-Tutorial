@@ -63,7 +63,7 @@ def bbox_overlaps(bboxes1, bboxes2):
         bboxes2 (torch.Tensor): shape (n, 4)
 
     Returns:
-        ious(Tensor): shape (m, n)
+        ious(torch.Tensor): shape (m, n)
     """
 
     lt = torch.max(bboxes1[:, None, :2], bboxes2[:, :2])  # [rows, cols, 2]

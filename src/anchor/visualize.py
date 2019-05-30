@@ -1,10 +1,11 @@
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
+import numpy as np
+import torch
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-import torch
+from mmdet.core.anchor import anchor_generator
 
 from transforms import bbox2delta
 
@@ -198,75 +199,56 @@ def draw_pos_assigned_bboxes(
         plt.show()
 
 
-def draw_base_anchor_on_grid(base_anchor, figsize=(20, 20)):
+def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
+    """Draws a Base anchor with no shifts on board
+
+    Args:
+        base_anchor (torch.Tensor): list of base anchor coordinates [[x1, y1, x2, y2], ...]
+        base_size (int): base anchor size
+        figsize (tuple): drawing figure size
+    """
     board = np.zeros((256, 256, 3))
+    board_size = board.shape[0] // 2
+    text_size = 3000 / board_size
+
+
+    ax = prepare_base_figure(base_size // 2, figsize)
 
     for anchor in base_anchor:
-        x1, y1, x2, y2 = np.array(anchor) + 112  # 왜 112?
+        x1, y1, x2, y2 = np.array(anchor) + board_size
+        pt_x1, pt_y1, pt_x2, pt_y2 = np.array(anchor)
         cv2.rectangle(board, (x1, y1), (x2, y2), (0, 255, 0), 1)
 
-    ax = prepare_base_figure(16, figsize)
+        ax.annotate(
+            f"{pt_x1}, {pt_y1}",
+            xy=(pt_x1, pt_y1),
+            xytext=(pt_x1 - 50, pt_y1 - 25),
+            color='white',
+            size=text_size,
+            arrowprops=dict(facecolor='white', shrink=5),
+        )
+        ax.annotate(
+            f"{pt_x2}, {pt_y2}",
+            xy=(pt_x2, pt_y2),
+            xytext=(pt_x2 + 25, pt_y2 + 25),
+            color='white',
+            size=text_size,
+            arrowprops=dict(facecolor='white', shrink=5),
+        )
+
 
     ax.annotate(
-        "base anchor center at (0, 0)",
-        xy=(0, 0),
-        xytext=(20, -85),
+        f"Center coordination of base anchor is ({base_size // 2}, {base_size // 2})",
+        xy=(base_size // 2, base_size // 2),
+        xytext=(base_size // 2 - 30, base_size // 2 - 90),
         color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
-
-    ax.annotate(
-        "-23, -45",
-        xy=(-23, -45),
-        xytext=(-48, -78),
-        color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
-    ax.annotate(
-        "-32, -32",
-        xy=(-32, -32),
-        xytext=(-68, -68),
-        color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
-    ax.annotate(
-        "-45, -23",
-        xy=(-45, -23),
-        xytext=(-78, -58),
-        color="white",
-        size=30,
+        size=text_size,
         arrowprops=dict(facecolor="white", shrink=5),
     )
 
-    ax.annotate(
-        "23, 45",
-        xy=(23, 45),
-        xytext=(22, 72),
-        color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
-    ax.annotate(
-        "32, 32",
-        xy=(32, 32),
-        xytext=(43, 43),
-        color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
-    ax.annotate(
-        "45, 23",
-        xy=(45, 23),
-        xytext=(72, 22),
-        color="white",
-        size=30,
-        arrowprops=dict(facecolor="white", shrink=5),
-    )
+
     legend_elements = [Line2D([0], [0], color="g", lw=4, label="base anchor")]
-    ax.imshow(board, extent=[-128, 128, 128, -128])
+    ax.imshow(board, extent=[-board_size, board_size, board_size, -board_size])
     ax.legend(handles=legend_elements, loc="upper right", fontsize=30)
     ax.xaxis.tick_top()
     ax.tick_params(axis="both", which="major", labelsize=20)
@@ -274,30 +256,58 @@ def draw_base_anchor_on_grid(base_anchor, figsize=(20, 20)):
     plt.show()
 
 
-def draw_anchor_samples_on_image(image_shape, base_anchor, all_anchors, shifts):
+def draw_anchor_samples_on_image(image_shape, base_size, featmap_size, scales, ratios, shift_amount=4, x_idx=2, y_idx=3):
+    """Shows how an anchor shifts, and it`s index, coordinate
+
+    Args:
+        image_shape (list): size of image to be processed
+        base_size (int): base anchor size
+        featmap_size (tuple): size of feature map
+        scales (list): list of anchor scales
+        ratios (list): list of anchor widths / heights
+        shift_amount (int): shift amount along x-axis
+        x_idx (int): start anchor index of x
+        y_idx (int): start anchor index of y
+    """
+    from anchor_generator import gen_base_anchors, grid_anchors
     board = np.zeros(image_shape)
     fig, ax = plt.subplots(figsize=(20, 20))
-    loc = plticker.FixedLocator(range(0, image_shape[0], 16))
+    loc = plticker.FixedLocator(range(0, image_shape[0], featmap_size[0]))
+
+    step_size = 512 / base_size
+
+    base_anchor = gen_base_anchors(base_size, ratios, scales[:1])
+    base_anchor_pos_x = int((base_anchor[0, 0] + base_anchor[0, 2]) // 2)
+    base_anchor_pos_y = int((base_anchor[0, 1] + base_anchor[0, 3]) // 2)
+    all_anchors, shifts = grid_anchors(base_anchor, featmap_size, base_size, 'cpu')
 
     ax.xaxis.set_major_locator(loc)
     ax.yaxis.set_major_locator(loc)
 
     ax.grid(which="major", axis="both", linestyle="--", color="w")
 
-    for anchor in base_anchor:
-        x1, y1, x2, y2 = np.array(anchor, dtype=np.uint8) + np.array(
-            [48, 112, 48, 112], dtype=np.uint8
-        )
+    anchor_sample_idx = 3 * (y_idx * step_size + x_idx) + 1
+    for i in range(-1, 2, 1):
+        x1, y1, x2, y2 = np.array(all_anchors[int(anchor_sample_idx + i)])
         cv2.rectangle(board, (x1, y1), (x2, y2), (0, 255, 0), 1)
-        x1 = int(x1 + 128)
-        x2 = int(x2 + 128)
-        cv2.rectangle(board, (x1, y1), (x2, y2), (0, 0, 255), 1)
+    anchor_center_x = (x2 + x1) // 2
+    anchor_center_y = (y2 + y1) // 2
 
-    for i in range(64, 208, 16):
-        ax.scatter(i, 128, s=50, c="r")
+
+    shift_x_idx = x_idx + shift_amount
+    shift_y_idx = y_idx
+    shift_anchor_sample_idx = 3 * (shift_y_idx * step_size + shift_x_idx) + 1
+    for i in range(-1, 2, 1):
+        x1, y1, x2, y2 = np.array(all_anchors[int(shift_anchor_sample_idx + i)])
+        cv2.rectangle(board, (x1, y1), (x2, y2), (0, 255, 0), 1)
+    shift_anchor_center_x = (x2 + x1) // 2
+    shift_anchor_center_y = (y2 + y1) // 2
+
+    for i in range(int(anchor_center_x), int(shift_anchor_center_x+1), base_size):
+        ax.scatter(i, anchor_center_y, s=50, c="r")
 
     legend_elements = [
-        Line2D([0], [0], color="g", lw=4, label="anchor[4, 8]"),
+        Line2D([0], [0], color="g", lw=4, label=f"anchor[{x_idx}, {y_idx}]"),
         Line2D(
             [0],
             [0],
@@ -308,28 +318,28 @@ def draw_anchor_samples_on_image(image_shape, base_anchor, all_anchors, shifts):
             lw=0,
             markersize=12,
         ),
-        Line2D([0], [0], color="b", lw=4, label="anchor[12, 8]"),
+        Line2D([0], [0], color="b", lw=4, label=f"anchor[{shift_x_idx}, {shift_y_idx}]"),
     ]
 
     ax.annotate(
-        "coords: (4x16, 8x16)\nindex: (4, 8, :3)",
-        xy=(63, 127),
-        xytext=(30, 70),
+        f"coords: ({base_anchor_pos_x}+{x_idx}x{base_size}, {base_anchor_pos_x}+{y_idx}x{base_size})\nindex: ({x_idx}, {y_idx}, :3)",
+        xy=(anchor_center_x, anchor_center_y),
+        xytext=(anchor_center_x - 50, anchor_center_y - 50),
         color="white",
         size=30,
         arrowprops=dict(facecolor="white", shrink=5),
     )
     ax.annotate(
-        "8 shifts along x-axis",
-        xy=(80, 128),
-        xytext=(64, 145),
+        f"{shift_amount} shifts along x-axis",
+        xy=(featmap_size[0] + x_idx * base_size, 128),
+        xytext=(anchor_center_x, anchor_center_y + 15),
         color="white",
         size=25,
     )
     ax.annotate(
         "",
-        xy=(188, 133),
-        xytext=(64, 133),
+        xy=(shift_anchor_center_x, anchor_center_y + 5),
+        xytext=(anchor_center_x, anchor_center_y + 5),
         color="white",
         size=30,
         arrowprops=dict(facecolor="white", shrink=5),
