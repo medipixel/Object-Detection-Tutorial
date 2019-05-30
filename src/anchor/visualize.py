@@ -199,7 +199,7 @@ def draw_pos_assigned_bboxes(
         plt.show()
 
 
-def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
+def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20), board_size=None):
     """Draws a Base anchor with no shifts on board
 
     Args:
@@ -207,9 +207,14 @@ def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
         base_size (int): base anchor size
         figsize (tuple): drawing figure size
     """
-    board = np.zeros((256, 256, 3))
-    board_size = board.shape[0] // 2
-    text_size = 3000 / board_size
+    if board_size is not None:
+        board = np.zeros((board_size, board_size, 3))
+        board_size = board_size // 2
+    else:
+        board = np.zeros((base_size * 8, base_size * 8, 3))
+        board_size = board.shape[0] // 2
+
+    text_size = 30
 
 
     ax = prepare_base_figure(base_size // 2, figsize)
@@ -222,7 +227,7 @@ def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
         ax.annotate(
             f"{pt_x1}, {pt_y1}",
             xy=(pt_x1, pt_y1),
-            xytext=(pt_x1 - 50, pt_y1 - 25),
+            xytext=(pt_x1- board_size//2, pt_y1),
             color='white',
             size=text_size,
             arrowprops=dict(facecolor='white', shrink=5),
@@ -230,7 +235,7 @@ def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
         ax.annotate(
             f"{pt_x2}, {pt_y2}",
             xy=(pt_x2, pt_y2),
-            xytext=(pt_x2 + 25, pt_y2 + 25),
+            xytext=(pt_x2 , pt_y2 + int(base_size * 1.5)),
             color='white',
             size=text_size,
             arrowprops=dict(facecolor='white', shrink=5),
@@ -240,7 +245,7 @@ def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20)):
     ax.annotate(
         f"Center coordination of base anchor is ({base_size // 2}, {base_size // 2})",
         xy=(base_size // 2, base_size // 2),
-        xytext=(base_size // 2 - 30, base_size // 2 - 90),
+        xytext=(base_size * 2 - board_size, base_size * 2 - board_size),
         color="white",
         size=text_size,
         arrowprops=dict(facecolor="white", shrink=5),
@@ -324,7 +329,7 @@ def draw_anchor_samples_on_image(image_shape, base_size, featmap_size, scales, r
     ax.annotate(
         f"coords: ({base_anchor_pos_x}+{x_idx}x{base_size}, {base_anchor_pos_x}+{y_idx}x{base_size})\nindex: ({x_idx}, {y_idx}, :3)",
         xy=(anchor_center_x, anchor_center_y),
-        xytext=(anchor_center_x - 50, anchor_center_y - 50),
+        xytext=(max(anchor_center_x - 50, 10), max(anchor_center_y - 50, 50)),
         color="white",
         size=30,
         arrowprops=dict(facecolor="white", shrink=5),
@@ -338,7 +343,7 @@ def draw_anchor_samples_on_image(image_shape, base_size, featmap_size, scales, r
     )
     ax.annotate(
         "",
-        xy=(shift_anchor_center_x, anchor_center_y + 5),
+        xy=(min(shift_anchor_center_x, image_shape[0] - 10), anchor_center_y + 5),
         xytext=(anchor_center_x, anchor_center_y + 5),
         color="white",
         size=30,
