@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from mmdet.core.anchor import anchor_generator
 
 from transforms import bbox2delta
 
@@ -220,8 +219,8 @@ def draw_base_anchor_on_grid(base_anchor, base_size, figsize=(20, 20), board_siz
     ax = prepare_base_figure(base_size // 2, figsize)
 
     for anchor in base_anchor:
-        x1, y1, x2, y2 = np.array(anchor) + board_size
-        pt_x1, pt_y1, pt_x2, pt_y2 = np.array(anchor)
+        x1, y1, x2, y2 = np.array(anchor) + board_size  # anchor coordinate
+        pt_x1, pt_y1, pt_x2, pt_y2 = np.array(anchor)  # arrow annotation head coordinations
         cv2.rectangle(board, (x1, y1), (x2, y2), (0, 255, 0), 1)
 
         ax.annotate(
