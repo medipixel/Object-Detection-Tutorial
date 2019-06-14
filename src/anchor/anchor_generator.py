@@ -10,8 +10,8 @@ import torch
 def meshgrid(x, y):
     """
     Args:
-        x (torch.Tensor):
-        y (torch.Tensor):
+        x (torch.Tensor): number of position to draw an anchor along y-axis
+        y (torch.Tensor): number of position to draw an anchor along x-axis
     """
     xx = x.repeat(len(y))
     yy = y.view(-1, 1).repeat(1, len(x)).view(-1)
@@ -19,6 +19,14 @@ def meshgrid(x, y):
 
 
 def gen_base_anchors(base_size, ratios, scales):
+    """Generates base anchor
+
+    Args:
+        base_size (int): size of base anchor
+        ratios (list): list of anchor widths / heights
+        scales (list): list of anchor scales
+    Return (torch.Tensor): list of base anchor coordinates [[x1, y1, x2, y2], ...]
+    """
     w = base_size
     h = base_size
 
@@ -45,10 +53,10 @@ def gen_base_anchors(base_size, ratios, scales):
 def grid_anchors(base_anchors, featmap_size, stride=16, device="cuda"):
     """
     Args:
-        base_anchors ():
-        featmap_size ():
-        stride (int):
-        device (str)
+        base_anchors (torch.Tensor): coordinations of base anchor
+        featmap_size (tuple): last feature map size of backbone network
+        stride (int): number of shifts
+        device (str): 'cuda' or 'cpu'
     """
     base_anchors = base_anchors.to(device)
 
@@ -67,9 +75,9 @@ def grid_anchors(base_anchors, featmap_size, stride=16, device="cuda"):
 def valid_flags(featmap_size, valid_size, num_base_anchors, device="cuda"):
     """
     Args:
-        featmap_size ():
-        valid_size ():
-        num_base_anchors ():
+        featmap_size (tuple): last feature map size of backbone network
+        valid_size (tuple): range of anchor position on feature map
+        num_base_anchors (int): number of anchor on single position : len(ratios) * len(scales)
         device (str): 'cuda' or 'cpu'
     """
     feat_h, feat_w = featmap_size
@@ -98,8 +106,8 @@ def get_anchors(
         device (str): 'cuda' or 'cpu'
 
     Returns:
-        anchors ():
-        flags ():
+        anchors (torch.Tensor): list of anchor coordination
+        flags (torch.Tensor): list of flags whether anchor is valid or not
     """
     num_base_anchors = len(scales) * len(ratios)
     base_anchors = gen_base_anchors(base_size, ratios, scales)
