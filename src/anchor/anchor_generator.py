@@ -19,13 +19,15 @@ def meshgrid(x, y):
 
 
 def gen_base_anchors(base_size, ratios, scales):
-    """Generates base anchor
+    """Generate base anchors.
 
     Args:
-        base_size (int): size of base anchor
-        ratios (list): list of anchor widths / heights
-        scales (list): list of anchor scales
-    Return (torch.Tensor): list of base anchor coordinates [[x1, y1, x2, y2], ...]
+        base_size (int): base anchor size
+        ratios (torch.Tensor): ratios of anchor
+        scales (torch.Tensor): scales of anchor
+
+    Returns:
+        base_anchors (torch.Tensor): [len(ratios) * len(scales), 4]
     """
     w = base_size
     h = base_size
@@ -51,11 +53,12 @@ def gen_base_anchors(base_size, ratios, scales):
 
 
 def grid_anchors(base_anchors, featmap_size, stride=16, device="cuda"):
-    """
+    """Generate grid anchors.
+
     Args:
-        base_anchors (torch.Tensor): coordinations of base anchor
-        featmap_size (tuple): last feature map size of backbone network
-        stride (int): number of shifts
+        base_anchors (torch.Tensor): [len(ratios) * len(scales), 4]
+        featmap_size (list): [f_w, f_h]
+        stride (int): stride btw feature map and original image
         device (str): 'cuda' or 'cpu'
     """
     base_anchors = base_anchors.to(device)
@@ -73,11 +76,12 @@ def grid_anchors(base_anchors, featmap_size, stride=16, device="cuda"):
 
 
 def valid_flags(featmap_size, valid_size, num_base_anchors, device="cuda"):
-    """
+    """Generate flags for each anchors.
+
     Args:
-        featmap_size (tuple): last feature map size of backbone network
-        valid_size (tuple): range of anchor position on feature map
-        num_base_anchors (int): number of anchor on single position : len(ratios) * len(scales)
+        featmap_size (list): [f_w, f_h]
+        valid_size (list): [valid_w, valid_h], normally equal to featmap_size
+        num_base_anchors (int): len(scales) * len(ratios)
         device (str): 'cuda' or 'cpu'
     """
     feat_h, feat_w = featmap_size
@@ -96,7 +100,8 @@ def valid_flags(featmap_size, valid_size, num_base_anchors, device="cuda"):
 def get_anchors(
     image_shape, featmap_size, base_size, anchor_stride, scales, ratios, device="cuda"
 ):
-    """
+    """Generate anchors and flags.
+
     Args:
         image_shape (list): [w, h, 3]
         featmap_size (list): [f_w, f_h]
@@ -106,8 +111,8 @@ def get_anchors(
         device (str): 'cuda' or 'cpu'
 
     Returns:
-        anchors (torch.Tensor): list of anchor coordination
-        flags (torch.Tensor): list of flags whether anchor is valid or not
+        anchors (torch.Tensor): [f_w * f_h * len(scales) * len(ratios), 4]
+        flags (torch.Tensor): [f_w * f_h * len(scales) * len(ratios)]
     """
     num_base_anchors = len(scales) * len(ratios)
     base_anchors = gen_base_anchors(base_size, ratios, scales)
